@@ -1,10 +1,14 @@
 import logging
 import os
-
+import pathlib
 import click
 import numpy
 import six
 import tensorflow
+import png
+
+from skimage.io import imread, imsave
+from skimage.color import rgb2gray
 
 # Use this backend for producing PNGs without interactive display.
 import matplotlib
@@ -372,3 +376,27 @@ def validate(images, width, height, patch_width):
         height, width = microscopeimagequality.dataset_creation.image_size_from_glob(images, patch_width)
 
     microscopeimagequality.validation.check_image_dimensions(image_paths, height, width)
+
+
+@command.command()
+@click.argument('images', nargs=-1, type=click.Path(exists=True))
+@click.option("--width_height_size", type=int, default=100)
+def crop_center(images, width_height_size):
+    for image_path in images:
+        path = pathlib.Path(image_path)
+        (path.parent / "cropped").mkdir(parents=True, exist_ok=True)
+
+        image = imread(path)
+
+        y, x = image.shape[:-1]
+        size = min(y, x)
+
+        startx = x // 2 - (size // 2)
+        starty = y // 2 - (size // 2)
+        image = image[starty:starty+size, startx:startx+size, :]
+        image = rgb2gray(image)
+
+        new_path = path.parent / "cropped" / path.name
+        imsave(new_path, image)
+
+        click.echo("{} stored.".format(str(new_path)))
